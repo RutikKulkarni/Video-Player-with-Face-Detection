@@ -149,6 +149,7 @@ const VideoPlayer = () => {
               {videoUrl && (
                 <div>
                   <video ref={videoRef} controls width="100%" src={videoUrl} />
+                  {/* <video ref={videoRef} controls width="100%" height="auto" /> */}
                   <FaceDetectionCanvas
                     videoUrl={videoUrl}
                     isPlaying={isPlaying}
