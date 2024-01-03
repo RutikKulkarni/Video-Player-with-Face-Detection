@@ -2,10 +2,13 @@ import React, { useEffect, useRef } from "react";
 import * as faceapi from "face-api.js";
 import { fabric } from "fabric";
 
-const FaceDetectionCanvas = ({ videoElement, isPlaying }) => {
+const FaceDetectionCanvas = ({ videoElement, isPlaying, detectFaces }) => {
   const canvasRef = useRef(null);
+  const objectsRef = useRef([]);
+
   useEffect(() => {
     const canvas = new fabric.Canvas(canvasRef.current);
+
     const loadFaceAPI = async () => {
       try {
         console.log("Loading FaceAPI models...");
@@ -20,49 +23,85 @@ const FaceDetectionCanvas = ({ videoElement, isPlaying }) => {
     };
 
     const faceDetection = async () => {
-      if (videoElement && isPlaying) {
+      if (videoElement && isPlaying && detectFaces) {
         try {
           console.log("Detecting faces...");
-          const detections = await faceapi
-            .detectAllFaces(videoElement, new faceapi.TinyFaceDetectorOptions())
+          const detection = await faceapi
+            .detectSingleFace(
+              videoElement,
+              new faceapi.TinyFaceDetectorOptions()
+            )
             .withFaceLandmarks()
             .withAgeAndGender();
-          console.log("Detected faces:", detections);
+          console.log("Detected face:", detection);
 
-          canvas.getObjects("rect").forEach((rect) => {
-            if (canvas.contains(rect)) {
-              canvas.remove(rect);
-            }
+          objectsRef.current.forEach((obj) => {
+            canvas.remove(obj);
           });
+          objectsRef.current = [];
 
-          if (detections.length > 0) {
-            detections.forEach((face) => {
-              const { x, y, width, height, gender, age } = face.alignedRect.box;
-              const rect = new fabric.Rect({
-                left: x,
-                top: y,
-                width,
-                height,
-                fill: "transparent",
-                stroke: "red",
-                strokeWidth: 2,
+          if (detection) {
+            const { x, y, width, height } = detection.detection.box;
+
+            const rect = new fabric.Rect({
+              left: Math.max(
+                0,
+                (x / videoElement.videoWidth) * videoElement.clientWidth
+              ),
+              top: Math.max(
+                0,
+                (y / videoElement.videoHeight) * videoElement.clientHeight
+              ),
+              width: Math.min(
+                (width / videoElement.videoWidth) * videoElement.clientWidth,
+                videoElement.clientWidth -
+                  (x / videoElement.videoWidth) * videoElement.clientWidth
+              ),
+              height: Math.min(
+                (height / videoElement.videoHeight) * videoElement.clientHeight,
+                videoElement.clientHeight -
+                  (y / videoElement.videoHeight) * videoElement.clientHeight
+              ),
+              fill: "transparent",
+              stroke: "red",
+              strokeWidth: 2,
+              selectable: false,
+              evented: false,
+            });
+
+            const text = new fabric.Text(
+              `Age: ${Math.round(detection.age)} years, Gender: ${
+                detection.gender
+              }`,
+              {
+                left: Math.max(
+                  0,
+                  (x / videoElement.videoWidth) * videoElement.clientWidth
+                ),
+                top: Math.max(
+                  0,
+                  (y / videoElement.videoHeight) * videoElement.clientHeight +
+                    (height / videoElement.videoHeight) *
+                      videoElement.clientHeight +
+                    5
+                ),
+                fontSize: 16,
+                fill: "red",
                 selectable: false,
                 evented: false,
-              });
+              }
+            );
 
-              const text = new fabric.Text(
-                `Age: ${Math.round(age)} years, Gender: ${gender}`,
-                {
-                  left: x,
-                  top: y + height + 5,
-                  fontSize: 16,
-                  fill: "red",
-                  selectable: false,
-                  evented: false,
-                }
-              );
-              canvas.add(rect, text);
+            canvas.add(rect);
+            objectsRef.current.push(rect);
+
+            text.set({
+              left: rect.left,
+              top: rect.top + rect.height + 5,
             });
+
+            canvas.add(text);
+            objectsRef.current.push(text);
           }
         } catch (error) {
           console.error("Error detecting faces:", error);
@@ -75,8 +114,9 @@ const FaceDetectionCanvas = ({ videoElement, isPlaying }) => {
     return () => {
       clearInterval(intervalId);
     };
-  }, [videoElement, isPlaying]);
+  }, [videoElement, isPlaying, detectFaces]);
 
   return <canvas ref={canvasRef} />;
 };
+
 export default FaceDetectionCanvas;

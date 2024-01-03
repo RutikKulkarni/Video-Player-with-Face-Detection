@@ -20,6 +20,7 @@ const VideoPlayer = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [useCamera, setUseCamera] = useState(false);
   const [uploadMessage, setUploadMessage] = useState("");
+  const [detectFaces, setDetectFaces] = useState(false);
 
   const videoRef = useRef(null);
   const cameraRef = useRef(null);
@@ -63,12 +64,12 @@ const VideoPlayer = () => {
   };
 
   const handlePlayPause = () => {
-    if (!videoUrl) {
+    if (!videoUrl && !useCamera) {
       setUploadMessage("Please upload a video first.");
       return;
     }
 
-    const video = videoRef.current;
+    const video = useCamera ? cameraRef.current : videoRef.current;
 
     if (video) {
       if (isPlaying) {
@@ -83,6 +84,10 @@ const VideoPlayer = () => {
 
   const handleToggleCamera = () => {
     setUseCamera(!useCamera);
+  };
+
+  const handleToggleFaceDetection = () => {
+    setDetectFaces(!detectFaces);
   };
 
   return (
@@ -122,11 +127,26 @@ const VideoPlayer = () => {
         {useCamera ? (
           <Box mt={3}>
             <Paper elevation={3} sx={{ p: 2 }}>
-              <video ref={cameraRef} width="100%" height="auto" />
+              <video
+                ref={cameraRef}
+                width="100%"
+                height="auto"
+                autoPlay={useCamera}
+                muted
+              />
               <FaceDetectionCanvas
                 videoElement={cameraRef.current}
                 isPlaying={isPlaying}
+                detectFaces={detectFaces}
               />
+              <Button
+                variant="contained"
+                color={detectFaces ? "secondary" : "primary"}
+                onClick={handleToggleFaceDetection}
+                sx={{ mt: 2 }}
+              >
+                {detectFaces ? "Stop Face Detection" : "Start Face Detection"}
+              </Button>
             </Paper>
           </Box>
         ) : (
@@ -148,12 +168,28 @@ const VideoPlayer = () => {
               </Button>
               {videoUrl && (
                 <div>
-                  <video ref={videoRef} controls width="100%" src={videoUrl} />
-                  {/* <video ref={videoRef} controls width="100%" height="auto" /> */}
-                  <FaceDetectionCanvas
-                    videoUrl={videoUrl}
-                    isPlaying={isPlaying}
+                  <video
+                    ref={videoRef}
+                    controls
+                    width="100%"
+                    src={videoUrl}
+                    height="50%"
                   />
+                  <FaceDetectionCanvas
+                    videoElement={videoRef.current}
+                    isPlaying={isPlaying}
+                    detectFaces={detectFaces}
+                  />
+                  <Button
+                    variant="contained"
+                    color={detectFaces ? "secondary" : "primary"}
+                    onClick={handleToggleFaceDetection}
+                    sx={{ mt: 2 }}
+                  >
+                    {detectFaces
+                      ? "Stop Face Detection"
+                      : "Start Face Detection"}
+                  </Button>
                 </div>
               )}
             </Paper>
@@ -169,6 +205,7 @@ const VideoPlayer = () => {
                     useCamera ? cameraRef.current : videoRef.current
                   }
                   isPlaying={isPlaying}
+                  detectFaces={detectFaces}
                 />
               )}
             </Paper>
